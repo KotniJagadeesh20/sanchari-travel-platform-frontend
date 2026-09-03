@@ -1,3 +1,9 @@
+// ⚠️ NOT CURRENTLY USED / NOT WIRED INTO ANY ROUTE. Kept for the future seat-
+// selection enhancement, which needs backend support first: a Seat entity,
+// per-seat availability, and a hold/lock mechanism to prevent concurrent
+// double-booking. Until that backend model exists, do not import this into
+// the live booking flow — Bus.totalSeats/bookedSeats are frontend-only stubs
+// (see mapBackendBus in bus-mappers.ts) and do not reflect real inventory.
 import { cn } from "@/lib/utils";
 import type { Bus } from "@/data/transportation";
 

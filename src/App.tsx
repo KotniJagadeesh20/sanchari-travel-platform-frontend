@@ -1,45 +1,41 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
-import TripDetails from "./pages/TripDetails";
-import Packages from "./pages/Packages";
-import PackageDetails from "./pages/PackageDetails";
+
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Trips from "./pages/Trips";
 import AllPackages from "./pages/AllPackages";
 import RealPackageDetails from "./pages/RealPackageDetails";
 import MyPackageBookings from "./pages/MyPackageBookings";
+import AllDestinations from "./pages/AllDestinations";
+import RealDestinationDetails from "./pages/RealDestinationDetails";
 import TroopsPage from "./pages/Troops";
 import TroopDetails from "./pages/TroopDetails";
 import CreateTroop from "./pages/CreateTroop";
 import Services from "./pages/Services";
 import ServiceDetails from "./pages/ServiceDetails";
 import Profile from "./pages/Profile";
-import PlaceDetails from "./pages/PlaceDetails";
 import PlannerLayout from "./components/planner/PlannerLayout";
 import PlannerDashboard from "./pages/planner/PlannerDashboard";
 import MyPackages from "./pages/planner/MyPackages";
 import CreatePackage from "./pages/planner/CreatePackage";
-import PlannerCreateService from "./pages/planner/CreateService";
 import PlannerProfile from "./pages/planner/PlannerProfile";
-import Orders from "./pages/planner/Orders";
 import MyHotels from "./pages/planner/MyHotels";
+import CreateHotel from "./pages/planner/CreateHotel";
 import Bookings from "./pages/planner/Bookings";
 import Analytics from "./pages/planner/Analytics";
 import Reviews from "./pages/planner/Reviews";
 import PlannerSettings from "./pages/planner/Settings";
-import MyServices from "./pages/planner/MyServices";
 import Transportation from "./pages/transportation/Transportation";
 import BusSearch from "./pages/transportation/bus/BusSearch";
 import BusResults from "./pages/transportation/bus/BusResults";
-import BusSeatSelection from "./pages/transportation/bus/BusSeatSelection";
+import BusBookingDetails from "./pages/transportation/bus/BusBookingDetails";
 import BusBookings from "./pages/transportation/bus/BusBookings";
 import RidesLanding from "./pages/transportation/rides/RidesLanding";
 import RideSearch from "./pages/transportation/rides/RideSearch";
@@ -50,6 +46,10 @@ import AdminLayout from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminDestinations from "./pages/admin/Destinations";
 import BusManagement from "./pages/admin/BusManagement";
+import HotelSearch from "./pages/stays/HotelSearch";
+import HotelResults from "./pages/stays/HotelResults";
+import HotelDetails from "./pages/stays/HotelDetails";
+import MyHotelBookings from "./pages/stays/MyHotelBookings";
 import AdminUsers from "./pages/admin/AdminUsers";
 import Moderation from "./pages/admin/Moderation";
 import PlatformAnalytics from "./pages/admin/PlatformAnalytics";
@@ -67,9 +67,11 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/trips" element={<Trips />} />
+          <Route path="/trips" element={<Navigate to="/all-destinations" replace />} />
           <Route path="/all-packages" element={<AllPackages />} />
           <Route path="/all-packages/:id" element={<RealPackageDetails />} />
+          <Route path="/all-destinations" element={<AllDestinations />} />
+          <Route path="/all-destinations/:id" element={<RealDestinationDetails />} />
           <Route
             path="/my-package-bookings"
             element={
@@ -80,9 +82,9 @@ const App = () => (
           />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/trip/:id" element={<TripDetails />} />
-          <Route path="/packages/:tripId" element={<Packages />} />
-          <Route path="/package/:id" element={<PackageDetails />} />
+          <Route path="/trip/:id" element={<Navigate to="/all-destinations" replace />} />
+          <Route path="/packages/:tripId" element={<Navigate to="/all-packages" replace />} />
+          <Route path="/package/:id" element={<Navigate to="/all-packages" replace />} />
           <Route path="/troops" element={<TroopsPage />} />
           <Route path="/troops/:id" element={<TroopDetails />} />
           <Route path="/create-troop" element={<CreateTroop />} />
@@ -96,16 +98,34 @@ const App = () => (
               </ProtectedRoute>
             }
           />
-          <Route path="/place/:tripId/:placeId" element={<PlaceDetails />} />
+          <Route path="/place/:tripId/:placeId" element={<Navigate to="/all-destinations" replace />} />
           <Route path="/transportation" element={<Transportation />} />
           <Route path="/transportation/bus" element={<BusSearch />} />
           <Route path="/transportation/bus/search" element={<BusResults />} />
           <Route path="/transportation/bus/bookings" element={<BusBookings />} />
-          <Route path="/transportation/bus/:id" element={<BusSeatSelection />} />
+          <Route path="/transportation/bus/:id" element={<BusBookingDetails />} />
+          <Route path="/stays" element={<HotelSearch />} />
+          <Route path="/stays/search" element={<HotelResults />} />
+          <Route path="/stays/bookings" element={<MyHotelBookings />} />
+          <Route path="/stays/:id" element={<HotelDetails />} />
           <Route path="/transportation/rides" element={<RidesLanding />} />
           <Route path="/transportation/rides/search" element={<RideSearch />} />
-          <Route path="/transportation/rides/create" element={<OfferRide />} />
-          <Route path="/transportation/rides/my-rides" element={<MyRides />} />
+          <Route
+            path="/transportation/rides/create"
+            element={
+              <ProtectedRoute>
+                <OfferRide />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/transportation/rides/my-rides"
+            element={
+              <ProtectedRoute>
+                <MyRides />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/transportation/rides/:id" element={<RideDetails />} />
           <Route
             path="/planner"
@@ -121,15 +141,13 @@ const App = () => (
             <Route index element={<PlannerDashboard />} />
             <Route path="packages" element={<MyPackages />} />
             <Route path="create" element={<CreatePackage />} />
-            {/* Troops hidden from Partner Dashboard for now — not part of Version 1 scope */}
-            <Route path="services" element={<MyServices />} />
-            <Route path="create-service" element={<PlannerCreateService />} />
+            {/* Troops hidden from Creator Dashboard for now — not part of Version 1 scope */}
             <Route path="hotels" element={<MyHotels />} />
+            <Route path="hotels/create" element={<CreateHotel />} />
             <Route path="bookings" element={<Bookings />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="reviews" element={<Reviews />} />
             <Route path="settings" element={<PlannerSettings />} />
-            <Route path="orders" element={<Orders />} />
             <Route path="profile" element={<PlannerProfile />} />
           </Route>
           <Route

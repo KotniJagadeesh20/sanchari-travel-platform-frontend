@@ -55,7 +55,6 @@ const BusResults = () => {
       source: values.source,
       destination: values.destination,
       date: values.date,
-      passengers: String(values.passengers),
     });
     runSearch(values);
   };
@@ -69,7 +68,7 @@ const BusResults = () => {
           <Link to="/transportation/bus" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
             <ArrowLeft size={14} /> Modify search
           </Link>
-          <SearchForm values={values} onChange={setValues} onSubmit={submit} submitLabel="Update" loading={loading} />
+          <SearchForm values={values} onChange={setValues} onSubmit={submit} submitLabel="Update" loading={loading} showPassengers={false} />
         </div>
       </div>
 

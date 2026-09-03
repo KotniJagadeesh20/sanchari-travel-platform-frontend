@@ -1,50 +1,74 @@
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
   Package, Hotel, CalendarCheck, IndianRupee, Star, Clock,
-  TrendingUp, ArrowUpRight, Plus, MapPin, Users,
+  ArrowUpRight, Plus, Users, Loader2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { packages } from "@/data/trips";
-import {
-  hotels, bookings, reviews, creatorPackageMeta, monthlyRevenue,
-} from "@/data/creator";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCreatorPortfolio } from "@/hooks/useCreatorPortfolio";
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
+type UnifiedRecentBooking = {
+  key: string;
+  kind: "package" | "hotel";
+  itemName: string;
+  guests: number;
+  date: string;
+  sortDate: string;
+  amount: number;
+  status: string;
+  statusTone: "confirmed" | "pending" | "completed" | "cancelled";
+};
+
 export default function PlannerDashboard() {
-  const totalRevenue = bookings
-    .filter(b => b.status !== "cancelled")
-    .reduce((s, b) => s + b.amount, 0);
-  const activeBookings = bookings.filter(b => b.status === "confirmed").length;
-  const pendingBookings = bookings.filter(b => b.status === "pending").length;
-  const avgRating = (
-    hotels.reduce((s, h) => s + h.rating, 0) / hotels.length
-  ).toFixed(1);
+  const { user } = useAuth();
+  const {
+    loading, myPackages, myHotels, allPackageBookings, allHotelBookings, latestReviews,
+    activeBookings, pendingBookings, totalRevenue, avgRating, totalReviewCount,
+    topPackages, topHotels, monthlyRevenue,
+  } = useCreatorPortfolio();
 
   const kpis = [
-    { label: "My Packages", value: packages.length, icon: Package, tint: "bg-primary/10 text-primary", trend: "+2 this month" },
-    { label: "My Hotels", value: hotels.length, icon: Hotel, tint: "bg-accent/10 text-accent", trend: "+1 this month" },
-    { label: "Active Bookings", value: activeBookings, icon: CalendarCheck, tint: "bg-emerald-500/10 text-emerald-600", trend: "Live now" },
-    { label: "Revenue (30d)", value: inr(totalRevenue), icon: IndianRupee, tint: "bg-secondary/15 text-secondary", trend: "+18% MoM" },
-    { label: "Avg. Rating", value: avgRating, icon: Star, tint: "bg-amber-500/10 text-amber-600", trend: `${reviews.length} reviews` },
-    { label: "Pending Bookings", value: pendingBookings, icon: Clock, tint: "bg-orange-500/10 text-orange-600", trend: "Action needed" },
+    { label: "My Packages", value: myPackages.length, icon: Package, tint: "bg-primary/10 text-primary" },
+    { label: "My Hotels", value: myHotels.length, icon: Hotel, tint: "bg-accent/10 text-accent" },
+    { label: "Active Bookings", value: activeBookings, icon: CalendarCheck, tint: "bg-emerald-500/10 text-emerald-600" },
+    { label: "Revenue", value: inr(totalRevenue), icon: IndianRupee, tint: "bg-secondary/15 text-secondary" },
+    { label: "Avg. Rating", value: avgRating != null ? avgRating.toFixed(1) : "—", icon: Star, tint: "bg-amber-500/10 text-amber-600", note: `${totalReviewCount} review${totalReviewCount !== 1 ? "s" : ""}` },
+    { label: "Pending Bookings", value: pendingBookings, icon: Clock, tint: "bg-orange-500/10 text-orange-600", note: pendingBookings > 0 ? "Action needed" : undefined },
   ];
 
-  const recentBookings = bookings.slice(0, 5);
-  const latestReviews = reviews.slice(0, 3);
+  const recentBookings: UnifiedRecentBooking[] = useMemo(() => {
+    const pkg: UnifiedRecentBooking[] = allPackageBookings.map((b) => ({
+      key: `pkg-${b.id}`,
+      kind: "package",
+      itemName: b.packageTitle,
+      guests: b.travelersCount,
+      date: b.departureStartDate,
+      sortDate: b.bookingTime,
+      amount: b.totalAmount,
+      status: b.status === "CONFIRMED" ? "confirmed" : "cancelled",
+      statusTone: b.status === "CONFIRMED" ? "confirmed" : "cancelled",
+    }));
+    const hotel: UnifiedRecentBooking[] = allHotelBookings.map((b) => ({
+      key: `hotel-${b.id}`,
+      kind: "hotel",
+      itemName: b.hotelName,
+      guests: b.numberOfGuests,
+      date: b.checkInDate,
+      sortDate: b.bookingDate,
+      amount: b.totalAmount,
+      status: b.status.toLowerCase().replace("_", " "),
+      statusTone: b.status === "PENDING" ? "pending" : b.status === "CANCELLED" ? "cancelled" : b.status === "CHECKED_OUT" ? "completed" : "confirmed",
+    }));
+    return [...pkg, ...hotel].sort((a, b) => (a.sortDate < b.sortDate ? 1 : -1)).slice(0, 5);
+  }, [allPackageBookings, allHotelBookings]);
 
-  const topPackages = [...packages]
-    .map(p => ({ ...p, meta: creatorPackageMeta[p.id] }))
-    .filter(p => p.meta)
-    .sort((a, b) => b.meta!.bookings - a.meta!.bookings)
-    .slice(0, 4);
-
-  const topHotels = [...hotels].sort((a, b) => b.bookings - a.bookings).slice(0, 4);
-
-  const peakRev = Math.max(...monthlyRevenue.map(m => m.revenue));
+  const peakRev = Math.max(1, ...monthlyRevenue.map((m) => m.revenue));
 
   const statusColor: Record<string, string> = {
     confirmed: "bg-emerald-500/10 text-emerald-600",
@@ -52,6 +76,10 @@ export default function PlannerDashboard() {
     completed: "bg-primary/10 text-primary",
     cancelled: "bg-destructive/10 text-destructive",
   };
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-24 text-muted-foreground gap-2"><Loader2 className="animate-spin" /> Loading your dashboard…</div>;
+  }
 
   return (
     <div className="space-y-8">
@@ -63,7 +91,7 @@ export default function PlannerDashboard() {
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Creator Studio</p>
           <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
-            Welcome back, <span className="text-gradient-hero">Wanderlust Travels</span>
+            Welcome back, <span className="text-gradient-hero">{user?.name || "there"}</span>
           </h1>
           <p className="text-muted-foreground mt-1">
             Here's how your packages and hotels are performing today.
@@ -98,9 +126,9 @@ export default function PlannerDashboard() {
                 </div>
                 <p className="text-xl font-bold text-card-foreground leading-tight">{k.value}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{k.label}</p>
-                <p className="text-[10px] text-muted-foreground/80 mt-2 flex items-center gap-1">
-                  <TrendingUp size={9} /> {k.trend}
-                </p>
+                {k.note && (
+                  <p className="text-[10px] text-muted-foreground/80 mt-2">{k.note}</p>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -119,7 +147,7 @@ export default function PlannerDashboard() {
               <div className="flex items-center justify-between mb-5">
                 <div>
                   <h2 className="font-display font-semibold text-card-foreground">Revenue trend</h2>
-                  <p className="text-xs text-muted-foreground">Last 7 months</p>
+                  <p className="text-xs text-muted-foreground">Last 6 months, from your actual bookings</p>
                 </div>
                 <Link to="/planner/analytics" className="text-xs text-primary hover:underline flex items-center gap-1">
                   View analytics <ArrowUpRight size={12} />
@@ -131,7 +159,7 @@ export default function PlannerDashboard() {
                     <div className="w-full flex flex-col justify-end h-full">
                       <div
                         className="w-full rounded-t-md bg-gradient-to-t from-primary/80 to-accent/70 transition-all"
-                        style={{ height: `${(m.revenue / peakRev) * 100}%` }}
+                        style={{ height: `${Math.max(2, (m.revenue / peakRev) * 100)}%` }}
                         title={inr(m.revenue)}
                       />
                     </div>
@@ -188,27 +216,31 @@ export default function PlannerDashboard() {
                 <h2 className="font-display font-semibold text-card-foreground">Recent bookings</h2>
                 <Link to="/planner/bookings" className="text-xs text-primary hover:underline">See all</Link>
               </div>
-              <div className="space-y-2">
-                {recentBookings.map(b => (
-                  <div key={b.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/40 transition-colors">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold ${b.kind === "package" ? "bg-primary/10 text-primary" : "bg-accent/10 text-accent"}`}>
-                      {b.kind === "package" ? <Package size={14} /> : <Hotel size={14} />}
+              {recentBookings.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-6 text-center">No bookings yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {recentBookings.map(b => (
+                    <div key={b.key} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/40 transition-colors">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold ${b.kind === "package" ? "bg-primary/10 text-primary" : "bg-accent/10 text-accent"}`}>
+                        {b.kind === "package" ? <Package size={14} /> : <Hotel size={14} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-card-foreground truncate">{b.itemName}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {b.guests} guest{b.guests !== 1 ? "s" : ""} · {b.date}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-semibold text-card-foreground">{inr(b.amount)}</p>
+                        <Badge variant="secondary" className={`text-[10px] mt-0.5 capitalize ${statusColor[b.statusTone]}`}>
+                          {b.status}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-card-foreground truncate">{b.itemName}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {b.customer} · {b.guests} guests · {b.date}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold text-card-foreground">{inr(b.amount)}</p>
-                      <Badge variant="secondary" className={`text-[10px] mt-0.5 ${statusColor[b.status]}`}>
-                        {b.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -223,22 +255,25 @@ export default function PlannerDashboard() {
                 <h2 className="font-display font-semibold text-card-foreground">Latest reviews</h2>
                 <Link to="/planner/reviews" className="text-xs text-primary hover:underline">All</Link>
               </div>
-              <div className="space-y-4">
-                {latestReviews.map(r => (
-                  <div key={r.id} className="pb-4 border-b border-border/50 last:border-0 last:pb-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium text-card-foreground">{r.customer}</p>
-                      <div className="flex items-center gap-0.5 text-amber-500">
-                        {Array.from({ length: r.rating }).map((_, i) => (
-                          <Star key={i} size={11} fill="currentColor" strokeWidth={0} />
-                        ))}
+              {latestReviews.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-6 text-center">No reviews yet.</p>
+              ) : (
+                <div className="space-y-4">
+                  {latestReviews.slice(0, 3).map(r => (
+                    <div key={r.id} className="pb-4 border-b border-border/50 last:border-0 last:pb-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm font-medium text-card-foreground">{r.hotelName}</p>
+                        <div className="flex items-center gap-0.5 text-amber-500">
+                          {Array.from({ length: r.rating }).map((_, i) => (
+                            <Star key={i} size={11} fill="currentColor" strokeWidth={0} />
+                          ))}
+                        </div>
                       </div>
+                      {r.comment && <p className="text-xs text-card-foreground/80 line-clamp-2">{r.comment}</p>}
                     </div>
-                    <p className="text-[11px] text-muted-foreground mb-1.5">{r.itemName}</p>
-                    <p className="text-xs text-card-foreground/80 line-clamp-2">{r.comment}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -256,21 +291,28 @@ export default function PlannerDashboard() {
                 <h2 className="font-display font-semibold text-card-foreground">Top packages</h2>
                 <Link to="/planner/packages" className="text-xs text-primary hover:underline">Manage</Link>
               </div>
-              <div className="space-y-3">
-                {topPackages.map(p => (
-                  <div key={p.id} className="flex items-center gap-3">
-                    <img src={p.meta!.image} alt={p.title} className="w-12 h-12 rounded-lg object-cover" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-card-foreground truncate">{p.title}</p>
-                      <p className="text-xs text-muted-foreground flex items-center gap-2">
-                        <span className="flex items-center gap-1"><Users size={10} /> {p.meta!.bookings}</span>
-                        <span className="flex items-center gap-1"><Star size={10} className="text-amber-500" fill="currentColor" strokeWidth={0} /> {p.meta!.rating || "—"}</span>
-                      </p>
+              {topPackages.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No packages yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {topPackages.slice(0, 4).map(p => (
+                    <div key={p.id} className="flex items-center gap-3">
+                      {p.thumbnailImage ? (
+                        <img src={p.thumbnailImage} alt={p.title} className="w-12 h-12 rounded-lg object-cover" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center"><Package size={16} className="text-muted-foreground" /></div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-card-foreground truncate">{p.title}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-2">
+                          <span className="flex items-center gap-1"><Users size={10} /> {p.bookingCount} booking{p.bookingCount !== 1 ? "s" : ""}</span>
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold text-primary">{inr(p.price)}</span>
                     </div>
-                    <span className="text-sm font-semibold text-primary">{inr(p.price)}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -285,21 +327,28 @@ export default function PlannerDashboard() {
                 <h2 className="font-display font-semibold text-card-foreground">Top hotels</h2>
                 <Link to="/planner/hotels" className="text-xs text-primary hover:underline">Manage</Link>
               </div>
-              <div className="space-y-3">
-                {topHotels.map(h => (
-                  <div key={h.id} className="flex items-center gap-3">
-                    <img src={h.image} alt={h.name} className="w-12 h-12 rounded-lg object-cover" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-card-foreground truncate">{h.name}</p>
-                      <p className="text-xs text-muted-foreground flex items-center gap-2">
-                        <span className="flex items-center gap-1"><MapPin size={10} /> {h.destination}</span>
-                        <span className="flex items-center gap-1"><Star size={10} className="text-amber-500" fill="currentColor" strokeWidth={0} /> {h.rating}</span>
-                      </p>
+              {topHotels.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No hotels yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {topHotels.slice(0, 4).map(h => (
+                    <div key={h.id} className="flex items-center gap-3">
+                      {h.imageUrls[0] ? (
+                        <img src={h.imageUrls[0]} alt={h.name} className="w-12 h-12 rounded-lg object-cover" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center"><Hotel size={16} className="text-muted-foreground" /></div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-card-foreground truncate">{h.name}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-2">
+                          <span className="flex items-center gap-1"><Star size={10} className="text-amber-500" fill="currentColor" strokeWidth={0} /> {h.averageRating?.toFixed(1) || "—"}</span>
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold text-primary">{h.bookingCount} bkg</span>
                     </div>
-                    <span className="text-sm font-semibold text-primary">{h.bookings} bkg</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

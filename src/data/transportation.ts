@@ -70,8 +70,6 @@ export interface Ride {
   seatsLeft: number; // maps to backend's availableSeats
   pricePerSeat: number;
   status: RideStatus; // maps to backend's RideStatus — only SCHEDULED rides are bookable/searchable
-  description?: string; // not in backend yet — frontend-only
-  reviews: { user: string; rating: number; comment: string }[]; // not in backend yet — no review system exists, keep empty until built
 }
 
 /**
@@ -204,86 +202,6 @@ export const mockBuses: Bus[] = [
     pricePerSeat: 550,
     rating: 4.4,
     amenities: ["Charging Point", "Water Bottle", "GPS Tracking"],
-  },
-];
-
-export const mockRides: Ride[] = [
-  {
-    id: "ride-1",
-    createdBy: { id: "d1", name: "Jagadeesh Reddy", email: "jagadeesh.r@example.com" },
-    vehicle: { type: "SUV", number: "TS09AB1234" },
-    source: "Hyderabad",
-    destination: "Vijayawada",
-    pickupPoint: "LB Nagar Metro",
-    dropPoint: "Benz Circle",
-    date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-    departureTime: "06:30",
-    totalSeats: 6,
-    seatsLeft: 3,
-    pricePerSeat: 850,
-    status: "SCHEDULED",
-    description:
-      "Comfortable AC Innova, non-stop drive with a short breakfast halt. Music on request, no smoking.",
-    reviews: [
-      { user: "Priya S.", rating: 5, comment: "Very safe driver, on time." },
-      { user: "Kiran M.", rating: 4, comment: "Smooth ride, clean vehicle." },
-    ],
-  },
-  {
-    id: "ride-2",
-    createdBy: { id: "d2", name: "Anitha K.", email: "anitha.k@example.com" },
-    vehicle: { type: "Sedan", number: "KA05CX4421" },
-    source: "Bangalore",
-    destination: "Mysore",
-    pickupPoint: "Silk Board",
-    dropPoint: "Mysore Palace",
-    date: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
-    departureTime: "07:15",
-    totalSeats: 4,
-    seatsLeft: 2,
-    pricePerSeat: 450,
-    status: "SCHEDULED",
-    description: "Weekend Mysore run. Ladies + families preferred.",
-    reviews: [
-      { user: "Sneha R.", rating: 5, comment: "Amazing driver, felt very safe." },
-    ],
-  },
-  {
-    id: "ride-3",
-    createdBy: { id: "d3", name: "Ramesh Naidu", email: "ramesh.n@example.com" },
-    vehicle: { type: "SUV", number: "AP16TR7788" },
-    source: "Vizag",
-    destination: "Araku Valley",
-    pickupPoint: "RTC Complex",
-    dropPoint: "Araku Bus Stand",
-    date: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
-    departureTime: "05:45",
-    totalSeats: 6,
-    seatsLeft: 4,
-    pricePerSeat: 700,
-    status: "SCHEDULED",
-    description: "Scenic Araku ghat road drive. Photo stops included.",
-    reviews: [
-      { user: "Vikram J.", rating: 4, comment: "Great drive, good stops." },
-      { user: "Meera L.", rating: 5, comment: "Loved the view halts!" },
-    ],
-  },
-  {
-    id: "ride-4",
-    createdBy: { id: "d4", name: "Suresh P.", email: "suresh.p@example.com" },
-    vehicle: { type: "Hatchback", number: "TN22BJ9911" },
-    source: "Chennai",
-    destination: "Pondicherry",
-    pickupPoint: "OMR Toll",
-    dropPoint: "White Town",
-    date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-    departureTime: "08:00",
-    totalSeats: 4,
-    seatsLeft: 1,
-    pricePerSeat: 550,
-    status: "SCHEDULED",
-    description: "ECR coastal drive with beach stops.",
-    reviews: [{ user: "Arjun T.", rating: 4, comment: "Chill vibes, good music." }],
   },
 ];
 

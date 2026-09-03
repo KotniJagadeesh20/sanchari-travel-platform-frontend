@@ -52,10 +52,11 @@ export const busService = {
   },
 
   /**
-   * ⚠️ Backend does not verify that the caller owns this booking before
-   * deleting it (see BookingdetailsServiceImpl.cancelTickets) — any
-   * authenticated user who knows a booking UUID can cancel it. This needs a
-   * server-side ownership check added before relying on this in production.
+   * Backend now verifies the caller owns this booking before deleting it
+   * (bus-booking-service UserController.cancelTicket checks the booking's
+   * userId against the X-Authenticated-User-Id gateway header and returns
+   * 403 on mismatch). A 403 here surfaces as an ApiError the caller should
+   * show to the user rather than silently swallow.
    */
   async cancelBooking(id: string): Promise<void> {
     await apiFetch(`/api/user/cancelbooking/${id}`, { method: "DELETE" });

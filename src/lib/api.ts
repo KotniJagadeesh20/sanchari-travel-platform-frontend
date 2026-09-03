@@ -77,6 +77,11 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
       return apiFetch<T>(path, { ...options, _isRetry: true });
     }
     authStorage.clear();
+    // AuthContext's `user` state has no other way to learn this happened —
+    // it only bootstraps from localStorage once on mount, so without this
+    // event isAuthenticated would keep reporting true (stale) after a
+    // background session expiry until the user manually navigates/reloads.
+    window.dispatchEvent(new Event("sanchari:session-expired"));
     // Let the caller's UI react (e.g. redirect to /login) rather than forcing
     // a hard navigation from inside the fetch layer.
     throw new ApiError(401, "Session expired. Please log in again.");

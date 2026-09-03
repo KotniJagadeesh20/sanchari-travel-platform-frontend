@@ -17,9 +17,13 @@ interface SearchFormProps {
   onSubmit: () => void;
   submitLabel?: string;
   loading?: boolean;
+  /** Hide the passengers field for flows where it isn't meaningful — e.g. bus
+   * search/booking has no multi-passenger or seat-count concept on the backend
+   * (one booking = one passenger), unlike ride sharing which filters by seatsLeft. */
+  showPassengers?: boolean;
 }
 
-const SearchForm = ({ values, onChange, onSubmit, submitLabel = "Search", loading }: SearchFormProps) => {
+const SearchForm = ({ values, onChange, onSubmit, submitLabel = "Search", loading, showPassengers = true }: SearchFormProps) => {
   const set = <K extends keyof SearchFormValues>(k: K, v: SearchFormValues[K]) => onChange({ ...values, [k]: v });
 
   return (
@@ -32,7 +36,7 @@ const SearchForm = ({ values, onChange, onSubmit, submitLabel = "Search", loadin
       }}
       className="glass rounded-2xl p-4 md:p-5 shadow-card"
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${showPassengers ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-3`}>
         <Field label="From">
           <Input value={values.source} onChange={(e) => set("source", e.target.value)} placeholder="Hyderabad" />
         </Field>
@@ -42,15 +46,17 @@ const SearchForm = ({ values, onChange, onSubmit, submitLabel = "Search", loadin
         <Field label="Date">
           <Input type="date" value={values.date} onChange={(e) => set("date", e.target.value)} />
         </Field>
-        <Field label="Passengers">
-          <Input
-            type="number"
-            min={1}
-            max={10}
-            value={values.passengers}
-            onChange={(e) => set("passengers", Math.max(1, Number(e.target.value) || 1))}
-          />
-        </Field>
+        {showPassengers && (
+          <Field label="Passengers">
+            <Input
+              type="number"
+              min={1}
+              max={10}
+              value={values.passengers}
+              onChange={(e) => set("passengers", Math.max(1, Number(e.target.value) || 1))}
+            />
+          </Field>
+        )}
         <div className="flex items-end">
           <Button
             type="submit"

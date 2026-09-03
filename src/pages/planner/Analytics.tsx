@@ -1,33 +1,41 @@
 import { motion } from "framer-motion";
-import { IndianRupee, CalendarCheck, TrendingUp, Package, Hotel as HotelIcon, Star } from "lucide-react";
+import { IndianRupee, CalendarCheck, TrendingUp, TrendingDown, Package, Hotel as HotelIcon, Star, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar,
 } from "recharts";
-import { bookings, hotels, monthlyRevenue, creatorPackageMeta } from "@/data/creator";
-import { packages } from "@/data/trips";
+import { useCreatorPortfolio } from "@/hooks/useCreatorPortfolio";
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
 export default function Analytics() {
-  const totalRevenue = bookings.filter(b => b.status !== "cancelled").reduce((s, b) => s + b.amount, 0);
-  const totalBookings = bookings.length;
+  const {
+    loading, totalRevenue, totalBookingsCount, avgRating,
+    topPackages, topHotels, monthlyRevenue,
+  } = useCreatorPortfolio();
 
-  const popularPackage = [...packages]
-    .map(p => ({ ...p, meta: creatorPackageMeta[p.id] }))
-    .filter(p => p.meta)
-    .sort((a, b) => b.meta!.bookings - a.meta!.bookings)[0];
+  const lastMonth = monthlyRevenue.at(-1);
+  const prevMonth = monthlyRevenue.at(-2);
+  const growth = prevMonth && prevMonth.revenue > 0 && lastMonth
+    ? ((lastMonth.revenue - prevMonth.revenue) / prevMonth.revenue * 100)
+    : null;
 
-  const popularHotel = [...hotels].sort((a, b) => b.bookings - a.bookings)[0];
-
-  const growth = ((monthlyRevenue.at(-1)!.revenue - monthlyRevenue.at(-2)!.revenue) / monthlyRevenue.at(-2)!.revenue * 100).toFixed(1);
+  const popularPackage = topPackages[0];
+  const popularHotel = topHotels[0];
 
   const kpis = [
-    { label: "Revenue (YTD)", value: inr(monthlyRevenue.reduce((s, m) => s + m.revenue, 0)), icon: IndianRupee, tint: "bg-emerald-500/10 text-emerald-600" },
-    { label: "Bookings", value: totalBookings + monthlyRevenue.reduce((s, m) => s + m.bookings, 0), icon: CalendarCheck, tint: "bg-primary/10 text-primary" },
-    { label: "MoM growth", value: `+${growth}%`, icon: TrendingUp, tint: "bg-accent/10 text-accent" },
-    { label: "Avg. rating", value: (hotels.reduce((s, h) => s + h.rating, 0) / hotels.length).toFixed(1), icon: Star, tint: "bg-amber-500/10 text-amber-600" },
+    { label: "Revenue (6mo)", value: inr(totalRevenue), icon: IndianRupee, tint: "bg-emerald-500/10 text-emerald-600" },
+    { label: "Bookings (6mo)", value: totalBookingsCount, icon: CalendarCheck, tint: "bg-primary/10 text-primary" },
+    {
+      label: "MoM growth", value: growth != null ? `${growth >= 0 ? "+" : ""}${growth.toFixed(1)}%` : "—",
+      icon: growth != null && growth < 0 ? TrendingDown : TrendingUp, tint: "bg-accent/10 text-accent",
+    },
+    { label: "Avg. rating", value: avgRating != null ? avgRating.toFixed(1) : "—", icon: Star, tint: "bg-amber-500/10 text-amber-600" },
   ];
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-24 text-muted-foreground gap-2"><Loader2 className="animate-spin" /> Loading analytics…</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -56,7 +64,7 @@ export default function Analytics() {
         <Card>
           <CardContent className="p-6">
             <h2 className="font-display font-semibold text-card-foreground mb-1">Monthly revenue</h2>
-            <p className="text-xs text-muted-foreground mb-4">Last 7 months</p>
+            <p className="text-xs text-muted-foreground mb-4">Last 6 months, from your actual bookings</p>
             <ResponsiveContainer width="100%" height={240}>
               <AreaChart data={monthlyRevenue}>
                 <defs>
@@ -100,31 +108,45 @@ export default function Analytics() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardContent className="p-6 flex items-center gap-4">
-            {popularPackage && (
+            {popularPackage ? (
               <>
-                <img src={popularPackage.meta!.image} alt="" className="w-16 h-16 rounded-xl object-cover" />
+                {popularPackage.thumbnailImage ? (
+                  <img src={popularPackage.thumbnailImage} alt="" className="w-16 h-16 rounded-xl object-cover" />
+                ) : (
+                  <div className="w-16 h-16 rounded-xl bg-muted flex items-center justify-center shrink-0"><Package size={20} className="text-muted-foreground" /></div>
+                )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1"><Package size={11} /> Popular package</p>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1"><Package size={11} /> Top package</p>
                   <p className="font-display font-semibold text-card-foreground truncate">{popularPackage.title}</p>
-                  <p className="text-xs text-muted-foreground">{popularPackage.meta!.bookings} bookings · ★ {popularPackage.meta!.rating}</p>
+                  <p className="text-xs text-muted-foreground">{popularPackage.bookingCount} booking{popularPackage.bookingCount !== 1 ? "s" : ""}</p>
                 </div>
                 <p className="text-lg font-bold text-primary">{inr(popularPackage.price)}</p>
               </>
+            ) : (
+              <p className="text-sm text-muted-foreground">No packages yet.</p>
             )}
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6 flex items-center gap-4">
-            {popularHotel && (
+            {popularHotel ? (
               <>
-                <img src={popularHotel.image} alt="" className="w-16 h-16 rounded-xl object-cover" />
+                {popularHotel.imageUrls[0] ? (
+                  <img src={popularHotel.imageUrls[0]} alt="" className="w-16 h-16 rounded-xl object-cover" />
+                ) : (
+                  <div className="w-16 h-16 rounded-xl bg-muted flex items-center justify-center shrink-0"><HotelIcon size={20} className="text-muted-foreground" /></div>
+                )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1"><HotelIcon size={11} /> Popular hotel</p>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1"><HotelIcon size={11} /> Top hotel</p>
                   <p className="font-display font-semibold text-card-foreground truncate">{popularHotel.name}</p>
-                  <p className="text-xs text-muted-foreground">{popularHotel.bookings} bookings · ★ {popularHotel.rating}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {popularHotel.bookingCount} booking{popularHotel.bookingCount !== 1 ? "s" : ""}
+                    {popularHotel.averageRating != null && <> · ★ {popularHotel.averageRating.toFixed(1)}</>}
+                  </p>
                 </div>
-                <p className="text-lg font-bold text-primary">{inr(popularHotel.priceFrom)}<span className="text-xs text-muted-foreground font-normal">/n</span></p>
               </>
+            ) : (
+              <p className="text-sm text-muted-foreground">No hotels yet.</p>
             )}
           </CardContent>
         </Card>

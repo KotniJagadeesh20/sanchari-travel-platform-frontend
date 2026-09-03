@@ -1,9 +1,8 @@
-// Real, backend-aligned Package types — deliberately separate from
-// src/data/trips.ts's Package/Trip types. Those are mock data for the
-// trip-scoped browsing flow (Packages.tsx / PackageDetails.tsx / PackageCard.tsx),
-// which stays untouched since it's entangled with the still-deferred
-// Trip-vs-Destination decision. This file backs the real, backend-wired
-// flow instead (AllPackages.tsx / RealPackageDetails.tsx / RealPackageCard.tsx).
+// Real, backend-aligned Package types. (There used to be a separate legacy
+// mock "Trips" concept in data/trips.ts + Packages.tsx/PackageDetails.tsx/
+// PackageCard.tsx/TripCard.tsx — all fully unreachable dead code, deleted.
+// This file backs the real, backend-wired flow: AllPackages.tsx /
+// RealPackageDetails.tsx / RealPackageCard.tsx / the Creator Dashboard.)
 
 export interface ItineraryDay {
   id: string;

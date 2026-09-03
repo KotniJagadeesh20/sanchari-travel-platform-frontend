@@ -34,6 +34,10 @@ export const authStorage = {
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
     localStorage.setItem(USER_KEY, JSON.stringify(user));
   },
+  /** Updates just the cached profile (e.g. after a successful profile edit) — tokens untouched. */
+  setUser(user: AuthUser) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  },
   setAccessToken(accessToken: string) {
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   },
