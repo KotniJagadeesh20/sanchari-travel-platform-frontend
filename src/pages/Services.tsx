@@ -96,7 +96,7 @@ const Services = () => {
               <TransportCard
                 icon={Bus}
                 title="Bus Booking"
-                description="Book intercity buses with live seat availability, transparent pricing, and instant confirmations."
+                description="Book intercity buses with real routes, transparent pricing, and instant confirmations."
                 cta="Book Bus"
                 to="/transportation/bus"
                 gradient="hero"
@@ -110,6 +110,33 @@ const Services = () => {
                 to="/transportation/rides"
                 gradient="sunset"
                 index={1}
+              />
+            </div>
+          </motion.div>
+        )}
+
+        {category === "Stays" && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="max-w-5xl mx-auto mb-14"
+          >
+            <div className="mb-6">
+              <h2 className="text-2xl font-display font-bold text-foreground">Real hotels, real rooms</h2>
+              <p className="text-muted-foreground">
+                Search real hotels and book a room type directly — instant confirmation.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-6">
+              <TransportCard
+                icon={Hotel}
+                title="Hotel Booking"
+                description="Search hotels by destination and dates, compare room types, and book instantly."
+                cta="Find a Stay"
+                to="/stays"
+                gradient="hero"
+                index={0}
               />
             </div>
           </motion.div>

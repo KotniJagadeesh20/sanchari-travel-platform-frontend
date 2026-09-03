@@ -1,12 +1,34 @@
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { User, Mail, Phone, Globe, MapPin, FileText } from "lucide-react";
+import { User, Mail, Phone, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
+import { ApiError } from "@/lib/api";
 
 export default function PlannerProfile() {
+  const { user, updateProfile } = useAuth();
+  const nameRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateProfile({
+        name: nameRef.current?.value || undefined,
+        phone: phoneRef.current?.value || undefined,
+      });
+      toast({ title: "Profile updated" });
+    } catch (err) {
+      toast({ title: "Could not save changes", description: err instanceof ApiError ? err.message : String(err), variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
@@ -19,11 +41,11 @@ export default function PlannerProfile() {
         <Card>
           <CardContent className="p-6 flex items-center gap-4">
             <div className="h-16 w-16 rounded-full bg-gradient-hero flex items-center justify-center text-primary-foreground text-2xl font-bold shrink-0">
-              W
+              {(user?.name?.[0] || "?").toUpperCase()}
             </div>
             <div>
-              <h2 className="text-lg font-display font-semibold text-card-foreground">Wanderlust Travels</h2>
-              <p className="text-sm text-muted-foreground">Travel Planner · Since 2023</p>
+              <h2 className="text-lg font-display font-semibold text-card-foreground">{user?.name || "—"}</h2>
+              <p className="text-sm text-muted-foreground">Creator</p>
             </div>
           </CardContent>
         </Card>
@@ -36,42 +58,26 @@ export default function PlannerProfile() {
               <Label className="flex items-center gap-1.5 text-sm font-medium">
                 <User size={14} className="text-primary" /> Full Name
               </Label>
-              <Input defaultValue="Wanderlust Travels" />
+              <Input ref={nameRef} defaultValue={user?.name || ""} />
             </div>
 
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5 text-sm font-medium">
                 <Mail size={14} className="text-primary" /> Email
               </Label>
-              <Input defaultValue="hello@wanderlust.com" type="email" />
+              <Input defaultValue={user?.email || ""} type="email" disabled />
+              <p className="text-xs text-muted-foreground">Email can't be changed here — it's your login identifier.</p>
             </div>
 
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5 text-sm font-medium">
                 <Phone size={14} className="text-primary" /> Phone / WhatsApp
               </Label>
-              <Input defaultValue="+91 98765 43210" />
+              <Input ref={phoneRef} defaultValue={user?.phone || ""} />
             </div>
 
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5 text-sm font-medium">
-                <MapPin size={14} className="text-primary" /> Location
-              </Label>
-              <Input defaultValue="Bangalore, India" />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5 text-sm font-medium">
-                <FileText size={14} className="text-primary" /> About
-              </Label>
-              <Textarea
-                defaultValue="We craft unforgettable travel experiences across India's most beautiful destinations. From hill stations to beaches, we plan it all with love."
-                rows={4}
-              />
-            </div>
-
-            <Button className="bg-gradient-hero text-primary-foreground hover:opacity-90 h-11 font-semibold">
-              Save Changes
+            <Button onClick={handleSave} disabled={saving} className="bg-gradient-hero text-primary-foreground hover:opacity-90 h-11 font-semibold">
+              {saving ? <Loader2 size={16} className="animate-spin" /> : "Save Changes"}
             </Button>
           </CardContent>
         </Card>

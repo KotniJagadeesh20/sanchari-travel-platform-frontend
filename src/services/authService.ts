@@ -35,6 +35,15 @@ export interface LoginPayload {
   password: string;
 }
 
+/** PUT /auth/users/me payload — partial, matches backend's UpdateProfileRequest exactly (no email/password). */
+export interface UpdateProfilePayload {
+  name?: string;
+  phone?: string;
+  gender?: string;
+  age?: number;
+  dob?: string; // "YYYY-MM-DD"
+}
+
 // Raw shape of auth-service's UserAdminResponse (used by both /userRegister and /Loginin).
 interface AuthResponseBody {
   success: boolean;
@@ -108,6 +117,16 @@ export const authService = {
 
   getStoredUser(): AuthUser | null {
     return authStorage.getUser();
+  },
+
+  /** Partial update — only send the fields that changed. Updates the local cache on success. */
+  async updateProfile(payload: UpdateProfilePayload): Promise<AuthUser> {
+    const updated = await apiFetch<AuthUser>("/auth/users/me", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+    authStorage.setUser(updated);
+    return updated;
   },
 
   isAuthenticated(): boolean {

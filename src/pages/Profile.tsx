@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  User, Mail, Phone, MapPin, Calendar, Heart, Package, Users, Camera, Edit2, Globe,
-  Bus, Hotel, Car, Sparkles, Wallet, Clock, CheckCircle2, XCircle, PlayCircle,
-  MessageSquare, Plus, ChevronRight, Compass, Route, Map, Star, TrendingUp, Bookmark
+  User, Mail, Phone, MapPin, Calendar, Heart, Package, Users, Camera, Edit2,
+  Bus, Hotel, Car, Wallet, Clock, CheckCircle2, XCircle, PlayCircle,
+  MessageSquare, Plus, ChevronRight, Route, Map, Star, Bookmark, Loader2, AlertTriangle,
+  type LucideIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -15,44 +16,38 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useAuth } from "@/contexts/AuthContext";
+import { bookingAggregatorService, toUnifiedBookings, type UnifiedBooking, type UnifiedBookingTone, type UnifiedBookingType } from "@/services/bookingAggregatorService";
+import { toast } from "@/hooks/use-toast";
+import { ApiError } from "@/lib/api";
 
-/* ---------------- MOCK DATA ---------------- */
+/* ---------------- MOCK DATA ----------------
+ * Trips and Wishlist below have no backend domain at all (no endpoints exist
+ * for either) — they stay mock for now, out of scope for this pass. Only the
+ * identity header, the "Total Bookings"/"Upcoming Booking" overview cards,
+ * and the whole "My Bookings" tab were wired to real data here — those are
+ * the parts directly backed by useAuth() and the Booking Aggregator
+ * (GET /me/bookings). */
 
-const overviewStats = [
-  { label: "Total Bookings", value: 14, icon: Bookmark, tone: "from-primary/15 to-primary/5 text-primary" },
-  { label: "Planned Trips", value: 3, icon: Route, tone: "from-orange-500/15 to-orange-500/5 text-orange-500" },
-  { label: "Wishlist Items", value: 8, icon: Heart, tone: "from-rose-500/15 to-rose-500/5 text-rose-500" },
-  { label: "Reviews Written", value: 15, icon: Star, tone: "from-amber-500/15 to-amber-500/5 text-amber-500" },
-];
-
-type BookingType = "Bus" | "Hotel" | "Package" | "Ride";
-type BookingStatus = "Upcoming" | "Ongoing" | "Completed" | "Cancelled";
-
-const bookings: {
-  id: number; type: BookingType; title: string; subtitle: string; meta: string;
-  date: string; status: BookingStatus;
-}[] = [
-  { id: 1, type: "Bus", title: "APSRTC · Garuda Plus", subtitle: "Hyderabad → Goa", meta: "Seat A4 · Boarding 9:30 PM", date: "18 Jul 2026", status: "Upcoming" },
-  { id: 2, type: "Hotel", title: "Hotel Paradise", subtitle: "Deluxe Sea View · 3 Nights", meta: "Check-in Tomorrow, 2:00 PM", date: "20 Jul 2026", status: "Upcoming" },
-  { id: 3, type: "Package", title: "Goa Beach Escape", subtitle: "5 Days · 4 Nights", meta: "4 Travelers · All Inclusive", date: "20 – 25 Jul 2026", status: "Upcoming" },
-  { id: 4, type: "Ride", title: "Airport → Hotel Paradise", subtitle: "Sedan · Rahul Verma", meta: "12 km · ETA 25 min", date: "20 Jul 2026", status: "Upcoming" },
-  { id: 5, type: "Hotel", title: "Backwater Retreat", subtitle: "Houseboat · 2 Nights", meta: "Kumarakom, Kerala", date: "12 – 14 Mar 2026", status: "Completed" },
-  { id: 6, type: "Bus", title: "KSRTC · Airavat", subtitle: "Bangalore → Ooty", meta: "Seat B2 · Sleeper", date: "01 Oct 2025", status: "Completed" },
-  { id: 7, type: "Ride", title: "City Tour Cab", subtitle: "Hatchback · Meera S.", meta: "Cancelled by driver", date: "22 Sep 2025", status: "Cancelled" },
-];
-
-const bookingMeta: Record<BookingType, { icon: any; tint: string; ring: string }> = {
+const bookingTypeMeta: Record<UnifiedBookingType, { icon: LucideIcon; tint: string; ring: string }> = {
   Bus: { icon: Bus, tint: "bg-sky-500/10 text-sky-500", ring: "ring-sky-500/20" },
   Hotel: { icon: Hotel, tint: "bg-violet-500/10 text-violet-500", ring: "ring-violet-500/20" },
   Package: { icon: Package, tint: "bg-primary/10 text-primary", ring: "ring-primary/20" },
   Ride: { icon: Car, tint: "bg-emerald-500/10 text-emerald-500", ring: "ring-emerald-500/20" },
 };
 
-const statusStyle: Record<BookingStatus, string> = {
-  Upcoming: "bg-primary/10 text-primary border-primary/20",
-  Ongoing: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-  Completed: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-  Cancelled: "bg-destructive/10 text-destructive border-destructive/20",
+const toneStyle: Record<UnifiedBookingTone, string> = {
+  pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  confirmed: "bg-primary/10 text-primary border-primary/20",
+  completed: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+  cancelled: "bg-destructive/10 text-destructive border-destructive/20",
+};
+
+const toneIcon: Record<UnifiedBookingTone, LucideIcon> = {
+  pending: Clock,
+  confirmed: PlayCircle,
+  completed: CheckCircle2,
+  cancelled: XCircle,
 };
 
 const trips = [
@@ -111,18 +106,59 @@ const recentActivity = [
 /* ---------------- COMPONENT ---------------- */
 
 export default function Profile() {
+  const { user, updateProfile } = useAuth();
+  const [sp] = useSearchParams();
+  const validTabs = ["overview", "bookings", "trips", "wishlist", "settings"];
+  const initialTab = validTabs.includes(sp.get("tab") || "") ? sp.get("tab")! : "overview";
   const [editing, setEditing] = useState(false);
-  const [bookingTypeFilter, setBookingTypeFilter] = useState<"All" | BookingType>("All");
-  const [bookingStatusFilter, setBookingStatusFilter] = useState<"All" | BookingStatus>("All");
+  const [bookingTypeFilter, setBookingTypeFilter] = useState<"All" | UnifiedBookingType>("All");
+  const [bookingToneFilter, setBookingToneFilter] = useState<"All" | UnifiedBookingTone>("All");
   const [wishlistCat, setWishlistCat] = useState<keyof typeof wishlistData>("Destinations");
   const [openTripId, setOpenTripId] = useState<number | null>(null);
 
-  const filteredBookings = bookings.filter(b =>
+  const [unifiedBookings, setUnifiedBookings] = useState<UnifiedBooking[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [bookingWarnings, setBookingWarnings] = useState<string[]>([]);
+
+  const nameRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const saveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      await updateProfile({
+        name: nameRef.current?.value || undefined,
+        phone: phoneRef.current?.value || undefined,
+      });
+      toast({ title: "Profile updated" });
+      setEditing(false);
+    } catch (err) {
+      toast({ title: "Could not save changes", description: err instanceof ApiError ? err.message : String(err), variant: "destructive" });
+    }
+    setSavingProfile(false);
+  };
+
+  useEffect(() => {
+    (async () => {
+      setBookingsLoading(true);
+      try {
+        const result = await bookingAggregatorService.getMyBookings();
+        setUnifiedBookings(toUnifiedBookings(result));
+        setBookingWarnings(result.warnings);
+      } catch (err) {
+        toast({ title: "Could not load bookings", description: err instanceof ApiError ? err.message : String(err), variant: "destructive" });
+      }
+      setBookingsLoading(false);
+    })();
+  }, []);
+
+  const filteredBookings = unifiedBookings.filter(b =>
     (bookingTypeFilter === "All" || b.type === bookingTypeFilter) &&
-    (bookingStatusFilter === "All" || b.status === bookingStatusFilter)
+    (bookingToneFilter === "All" || b.tone === bookingToneFilter)
   );
 
-  const upcomingHotel = bookings.find(b => b.type === "Hotel" && b.status === "Upcoming");
+  const nextUpcomingBooking = unifiedBookings.find(b => b.tone === "confirmed" || b.tone === "pending");
   const upcomingTrip = trips.find(t => t.status === "Planning");
 
   return (
@@ -150,7 +186,7 @@ export default function Profile() {
         >
           <div className="relative">
             <div className="h-28 w-28 rounded-2xl border-4 border-background bg-gradient-hero flex items-center justify-center text-primary-foreground text-4xl font-bold shadow-xl">
-              A
+              {(user?.name?.[0] || "?").toUpperCase()}
             </div>
             <button className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground p-1.5 rounded-lg shadow-md hover:opacity-90 transition-opacity">
               <Camera size={14} />
@@ -158,19 +194,19 @@ export default function Profile() {
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">Aarav Sharma</h1>
-              <Badge className="bg-gradient-hero text-primary-foreground border-0 gap-1">
-                <Sparkles size={11} /> Explorer
-              </Badge>
+              <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">{user?.name || "—"}</h1>
+              {user?.role === "ROLE_ADMIN" && (
+                <Badge className="bg-gradient-hero text-primary-foreground border-0">Admin</Badge>
+              )}
             </div>
             <p className="text-muted-foreground flex items-center gap-1.5 mt-1 text-sm">
-              <MapPin size={14} /> Bangalore, India · Traveler since 2023
+              <Mail size={14} /> {user?.email}
             </p>
-            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><Compass size={12} className="text-primary" /> 12 cities</span>
-              <span className="flex items-center gap-1"><Globe size={12} className="text-primary" /> 3 countries</span>
-              <span className="flex items-center gap-1"><TrendingUp size={12} className="text-primary" /> Level 4</span>
-            </div>
+            {user?.phone && (
+              <p className="text-muted-foreground flex items-center gap-1.5 mt-1 text-sm">
+                <Phone size={14} /> {user.phone}
+              </p>
+            )}
           </div>
           <Button variant="outline" onClick={() => setEditing(!editing)} className="gap-2">
             <Edit2 size={14} /> {editing ? "Cancel" : "Edit Profile"}
@@ -178,7 +214,7 @@ export default function Profile() {
         </motion.div>
 
         {/* Tabs */}
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs defaultValue={initialTab} className="space-y-6">
           <TabsList className="bg-muted/50 p-1 rounded-xl w-full md:w-auto overflow-x-auto flex md:inline-flex">
             {["overview", "bookings", "trips", "wishlist", "settings"].map(v => (
               <TabsTrigger
@@ -193,8 +229,28 @@ export default function Profile() {
           {/* ---------- OVERVIEW ---------- */}
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {overviewStats.map((s, i) => (
-                <motion.div key={s.label} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
+                <Card className="overflow-hidden bg-gradient-to-br from-primary/15 to-primary/5 text-primary border-0">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <Bookmark size={22} />
+                      <span className="text-3xl font-bold text-foreground">
+                        {bookingsLoading ? <Loader2 size={22} className="animate-spin" /> : unifiedBookings.length}
+                      </span>
+                    </div>
+                    <p className="text-xs font-medium text-foreground/70 mt-2">Total Bookings</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+              {/* Planned Trips / Wishlist Items / Reviews Written have no backend
+                  domain yet (no Trips, Wishlist, or cross-service review-count
+                  endpoint exists) — left as illustrative placeholders, not wired. */}
+              {[
+                { label: "Planned Trips", value: 3, icon: Route, tone: "from-orange-500/15 to-orange-500/5 text-orange-500" },
+                { label: "Wishlist Items", value: 8, icon: Heart, tone: "from-rose-500/15 to-rose-500/5 text-rose-500" },
+                { label: "Reviews Written", value: 15, icon: Star, tone: "from-amber-500/15 to-amber-500/5 text-amber-500" },
+              ].map((s, i) => (
+                <motion.div key={s.label} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: (i + 1) * 0.05 }}>
                   <Card className={`overflow-hidden bg-gradient-to-br ${s.tone} border-0`}>
                     <CardContent className="p-5">
                       <div className="flex items-start justify-between">
@@ -212,20 +268,22 @@ export default function Profile() {
               {/* Upcoming Booking */}
               <Card className="overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="bg-gradient-to-r from-violet-500/10 to-primary/10 px-5 py-3 flex items-center justify-between border-b">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Upcoming Booking</span>
-                  <Hotel size={16} className="text-violet-500" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Next Booking</span>
+                  {nextUpcomingBooking && (() => { const Icon = bookingTypeMeta[nextUpcomingBooking.type].icon; return <Icon size={16} className="text-violet-500" />; })()}
                 </div>
                 <CardContent className="p-5">
-                  {upcomingHotel ? (
+                  {bookingsLoading ? (
+                    <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Loading…</p>
+                  ) : nextUpcomingBooking ? (
                     <>
-                      <h3 className="font-display font-bold text-lg text-foreground">{upcomingHotel.title}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">{upcomingHotel.subtitle}</p>
+                      <h3 className="font-display font-bold text-lg text-foreground">{nextUpcomingBooking.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">{nextUpcomingBooking.subtitle}</p>
                       <div className="flex items-center gap-2 mt-4 text-sm">
                         <Clock size={14} className="text-primary" />
-                        <span className="text-foreground font-medium">{upcomingHotel.meta}</span>
+                        <span className="text-foreground font-medium">{nextUpcomingBooking.meta}</span>
                       </div>
-                      <Button variant="outline" size="sm" className="mt-4 gap-1.5">
-                        View Details <ChevronRight size={14} />
+                      <Button variant="outline" size="sm" className="mt-4 gap-1.5" asChild>
+                        <a href={nextUpcomingBooking.detailLink}>View Details <ChevronRight size={14} /></a>
                       </Button>
                     </>
                   ) : <p className="text-sm text-muted-foreground">No upcoming bookings</p>}
@@ -283,6 +341,13 @@ export default function Profile() {
 
           {/* ---------- MY BOOKINGS ---------- */}
           <TabsContent value="bookings" className="space-y-5">
+            {bookingWarnings.length > 0 && (
+              <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800">
+                <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                <div>{bookingWarnings.map((w) => <p key={w}>{w}</p>)}</div>
+              </div>
+            )}
+
             <Card className="p-4">
               <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
                 <div className="flex gap-1.5 flex-wrap">
@@ -299,12 +364,12 @@ export default function Profile() {
                   ))}
                 </div>
                 <div className="flex gap-1.5 flex-wrap">
-                  {(["All", "Upcoming", "Ongoing", "Completed", "Cancelled"] as const).map(s => (
+                  {(["All", "pending", "confirmed", "completed", "cancelled"] as const).map(s => (
                     <button
                       key={s}
-                      onClick={() => setBookingStatusFilter(s)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border ${
-                        bookingStatusFilter === s
+                      onClick={() => setBookingToneFilter(s)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border capitalize ${
+                        bookingToneFilter === s
                           ? "border-primary text-primary bg-primary/5"
                           : "border-border text-muted-foreground hover:border-muted-foreground/40"
                       }`}
@@ -315,7 +380,11 @@ export default function Profile() {
             </Card>
 
             <div className="grid gap-3">
-              {filteredBookings.length === 0 ? (
+              {bookingsLoading ? (
+                <Card className="p-12 text-center text-muted-foreground flex items-center justify-center gap-2">
+                  <Loader2 size={18} className="animate-spin" /> Loading your bookings…
+                </Card>
+              ) : filteredBookings.length === 0 ? (
                 <Card className="p-12 text-center">
                   <div className="mx-auto h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-3">
                     <Bookmark size={22} className="text-muted-foreground" />
@@ -324,10 +393,10 @@ export default function Profile() {
                   <p className="text-sm text-muted-foreground mt-1">Try adjusting your filters or explore services</p>
                 </Card>
               ) : filteredBookings.map((b, i) => {
-                const meta = bookingMeta[b.type];
-                const StatusIcon = b.status === "Completed" ? CheckCircle2 : b.status === "Cancelled" ? XCircle : b.status === "Ongoing" ? PlayCircle : Clock;
+                const meta = bookingTypeMeta[b.type];
+                const StatusIcon = toneIcon[b.tone];
                 return (
-                  <motion.div key={b.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                  <motion.div key={b.key} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                     <Card className={`overflow-hidden hover:shadow-md transition-shadow ring-1 ${meta.ring}`}>
                       <CardContent className="p-4 flex items-center gap-4">
                         <div className={`h-14 w-14 rounded-xl flex items-center justify-center ${meta.tint} shrink-0`}>
@@ -343,11 +412,11 @@ export default function Profile() {
                           <p className="text-xs text-foreground/70 mt-1 truncate">{b.meta}</p>
                         </div>
                         <div className="flex flex-col items-end gap-2 shrink-0">
-                          <Badge variant="outline" className={`gap-1 ${statusStyle[b.status]}`}>
-                            <StatusIcon size={11} /> {b.status}
+                          <Badge variant="outline" className={`gap-1 ${toneStyle[b.tone]}`}>
+                            <StatusIcon size={11} /> {b.statusLabel}
                           </Badge>
-                          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1">
-                            Details <ChevronRight size={12} />
+                          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" asChild>
+                            <a href={b.detailLink}>Details <ChevronRight size={12} /></a>
                           </Button>
                         </div>
                       </CardContent>
@@ -521,13 +590,14 @@ export default function Profile() {
               <Card className="md:col-span-1">
                 <CardContent className="p-5">
                   <h3 className="font-display font-semibold text-foreground">Account</h3>
-                  <p className="text-xs text-muted-foreground mt-1">Manage your personal details and public profile.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Manage your personal details.</p>
                   <div className="mt-4 space-y-2 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground"><User size={13} /> Profile info</div>
-                    <div className="flex items-center gap-2 text-muted-foreground"><Mail size={13} /> Email & phone</div>
-                    <div className="flex items-center gap-2 text-muted-foreground"><MapPin size={13} /> Location</div>
-                    <div className="flex items-center gap-2 text-muted-foreground"><Globe size={13} /> Bio</div>
+                    <div className="flex items-center gap-2 text-muted-foreground"><Phone size={13} /> Phone</div>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-4">
+                    Email can't be changed here — it's your login identifier.
+                  </p>
                 </CardContent>
               </Card>
 
@@ -538,37 +608,29 @@ export default function Profile() {
                       <Label className="flex items-center gap-1.5 text-sm font-medium">
                         <User size={14} className="text-primary" /> Full Name
                       </Label>
-                      <Input defaultValue="Aarav Sharma" disabled={!editing} />
+                      <Input ref={nameRef} defaultValue={user?.name || ""} disabled={!editing} />
                     </div>
                     <div className="space-y-2">
                       <Label className="flex items-center gap-1.5 text-sm font-medium">
                         <Mail size={14} className="text-primary" /> Email
                       </Label>
-                      <Input defaultValue="aarav@email.com" type="email" disabled={!editing} />
+                      <Input defaultValue={user?.email || ""} type="email" disabled />
                     </div>
                     <div className="space-y-2">
                       <Label className="flex items-center gap-1.5 text-sm font-medium">
                         <Phone size={14} className="text-primary" /> Phone
                       </Label>
-                      <Input defaultValue="+91 98765 43210" disabled={!editing} />
+                      <Input ref={phoneRef} defaultValue={user?.phone || ""} disabled={!editing} />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-1.5 text-sm font-medium">
-                        <MapPin size={14} className="text-primary" /> Location
-                      </Label>
-                      <Input defaultValue="Bangalore, India" disabled={!editing} />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-1.5 text-sm font-medium">
-                      <Globe size={14} className="text-primary" /> Bio
-                    </Label>
-                    <Textarea defaultValue="Adventure seeker & mountain lover. Always planning the next escape!" rows={3} disabled={!editing} />
                   </div>
                   {editing && (
                     <div className="flex gap-2">
-                      <Button className="bg-gradient-hero text-primary-foreground hover:opacity-90 h-11 font-semibold">
-                        Save Changes
+                      <Button
+                        onClick={saveProfile}
+                        disabled={savingProfile}
+                        className="bg-gradient-hero text-primary-foreground hover:opacity-90 h-11 font-semibold"
+                      >
+                        {savingProfile ? <Loader2 size={16} className="animate-spin" /> : "Save Changes"}
                       </Button>
                       <Button variant="outline" onClick={() => setEditing(false)} className="h-11">Cancel</Button>
                     </div>

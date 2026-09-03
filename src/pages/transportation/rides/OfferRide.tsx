@@ -91,7 +91,7 @@ const OfferRide = () => {
 
           <Section title="When">
             <FieldRow>
-              <Field label="Date"><Input type="date" value={f.date} onChange={(e) => set("date", e.target.value)} /></Field>
+              <Field label="Date"><Input type="date" value={f.date} min={new Date().toISOString().slice(0, 10)} onChange={(e) => set("date", e.target.value)} /></Field>
               <Field label="Departure time"><Input type="time" value={f.departureTime} onChange={(e) => set("departureTime", e.target.value)} /></Field>
             </FieldRow>
           </Section>

@@ -29,7 +29,6 @@ const BusSearch = () => {
       source: values.source,
       destination: values.destination,
       date: values.date,
-      passengers: String(values.passengers),
     });
     nav(`/transportation/bus/search?${params.toString()}`);
   };
@@ -56,11 +55,11 @@ const BusSearch = () => {
             <h1 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-2">
               Where are you going?
             </h1>
-            <p className="text-muted-foreground">Real-time seat availability across 500+ operators.</p>
+            <p className="text-muted-foreground">Search real routes and book your seat in minutes.</p>
           </motion.div>
 
           <div className="max-w-4xl mx-auto">
-            <SearchForm values={values} onChange={setValues} onSubmit={submit} submitLabel="Search Buses" />
+            <SearchForm values={values} onChange={setValues} onSubmit={submit} submitLabel="Search Buses" showPassengers={false} />
           </div>
         </div>
       </section>

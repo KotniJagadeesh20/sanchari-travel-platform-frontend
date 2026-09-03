@@ -62,7 +62,6 @@ export function mapBackendRide(r: BackendRide): Ride {
     seatsLeft: r.availableSeats,
     pricePerSeat: r.pricePerSeat,
     status: r.status,
-    reviews: [], // no review system exists yet
   };
 }
 

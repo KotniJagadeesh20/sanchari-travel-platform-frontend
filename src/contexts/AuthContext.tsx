@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { authService, AuthUser, LoginPayload, RegisterPayload } from "@/services/authService";
+import { authService, AuthUser, LoginPayload, RegisterPayload, UpdateProfilePayload } from "@/services/authService";
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -8,6 +8,7 @@ interface AuthContextValue {
   login: (payload: LoginPayload) => Promise<AuthUser>;
   register: (payload: RegisterPayload) => Promise<AuthUser>;
   logout: () => Promise<void>;
+  updateProfile: (payload: UpdateProfilePayload) => Promise<AuthUser>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -24,6 +25,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(authService.getStoredUser());
     }
     setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    // api.ts dispatches this when a background token refresh fails (session
+    // expired while the user was sitting on a page, not actively logging
+    // in/out). Without this listener, `user` stays stale — isAuthenticated
+    // would keep reporting true even though localStorage was already
+    // cleared — until the user happened to navigate or reload.
+    const handleSessionExpired = () => setUser(null);
+    window.addEventListener("sanchari:session-expired", handleSessionExpired);
+    return () => window.removeEventListener("sanchari:session-expired", handleSessionExpired);
   }, []);
 
   const login = async (payload: LoginPayload) => {
@@ -43,9 +55,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const updateProfile = async (payload: UpdateProfilePayload) => {
+    const authUser = await authService.updateProfile(payload);
+    setUser(authUser);
+    return authUser;
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated: !!user, isLoading, login, register, logout }}
+      value={{ user, isAuthenticated: !!user, isLoading, login, register, logout, updateProfile }}
     >
       {children}
     </AuthContext.Provider>

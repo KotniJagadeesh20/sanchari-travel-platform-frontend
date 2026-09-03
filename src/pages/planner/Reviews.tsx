@@ -1,22 +1,27 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { Star, Package, Hotel as HotelIcon, MessageSquareReply } from "lucide-react";
+import { Star, Hotel as HotelIcon, MessageSquareReply, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { reviews, type Review } from "@/data/creator";
+import { useCreatorPortfolio } from "@/hooks/useCreatorPortfolio";
+import type { HotelReview } from "@/data/hotels";
 
 export default function Reviews() {
-  const [tab, setTab] = useState<"package" | "hotel">("package");
-  const list = reviews.filter(r => r.kind === tab);
-  const avg = list.length ? (list.reduce((s, r) => s + r.rating, 0) / list.length).toFixed(1) : "—";
+  const { loading, latestReviews } = useCreatorPortfolio();
+  const avg = latestReviews.length ? (latestReviews.reduce((s, r) => s + r.rating, 0) / latestReviews.length).toFixed(1) : "—";
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-24 text-muted-foreground gap-2"><Loader2 className="animate-spin" /> Loading reviews…</div>;
+  }
 
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">Reviews</h1>
-        <p className="text-muted-foreground mt-1">Guest feedback across your listings.</p>
+        <p className="text-muted-foreground mt-1 flex items-center gap-1.5">
+          <HotelIcon size={14} /> Guest feedback across your hotels.
+        </p>
+        {/* Packages have no review system on the backend yet — nothing to show here for them. */}
       </motion.div>
 
       <Card>
@@ -28,12 +33,12 @@ export default function Reviews() {
                 <Star key={i} size={12} fill="currentColor" strokeWidth={0} />
               ))}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">{list.length} reviews</p>
+            <p className="text-xs text-muted-foreground mt-1">{latestReviews.length} review{latestReviews.length !== 1 ? "s" : ""}</p>
           </div>
           <div className="flex-1 min-w-[200px]">
             {[5, 4, 3, 2, 1].map(star => {
-              const count = list.filter(r => r.rating === star).length;
-              const pct = list.length ? (count / list.length) * 100 : 0;
+              const count = latestReviews.filter(r => r.rating === star).length;
+              const pct = latestReviews.length ? (count / latestReviews.length) * 100 : 0;
               return (
                 <div key={star} className="flex items-center gap-2 text-xs">
                   <span className="w-3">{star}</span>
@@ -49,20 +54,12 @@ export default function Reviews() {
         </CardContent>
       </Card>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "package" | "hotel")}>
-        <TabsList>
-          <TabsTrigger value="package"><Package size={14} className="mr-1.5" /> Package reviews</TabsTrigger>
-          <TabsTrigger value="hotel"><HotelIcon size={14} className="mr-1.5" /> Hotel reviews</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="package" className="mt-4"><ReviewList items={list} /></TabsContent>
-        <TabsContent value="hotel" className="mt-4"><ReviewList items={list} /></TabsContent>
-      </Tabs>
+      <ReviewList items={latestReviews} />
     </div>
   );
 }
 
-function ReviewList({ items }: { items: Review[] }) {
+function ReviewList({ items }: { items: (HotelReview & { hotelName: string })[] }) {
   if (items.length === 0) {
     return (
       <Card>
@@ -81,8 +78,11 @@ function ReviewList({ items }: { items: Review[] }) {
             <CardContent className="p-5">
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <p className="font-medium text-card-foreground">{r.customer}</p>
-                  <p className="text-[11px] text-muted-foreground">{r.date} · {r.itemName}</p>
+                  {/* No reviewer name is exposed by the backend (HotelReview
+                      carries userId only, not a display name) — same
+                      constraint as the customer-facing hotel details page. */}
+                  <p className="font-medium text-card-foreground">{r.hotelName}</p>
+                  <p className="text-[11px] text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div className="flex items-center gap-0.5 text-amber-500">
                   {Array.from({ length: r.rating }).map((_, i) => (
@@ -90,7 +90,7 @@ function ReviewList({ items }: { items: Review[] }) {
                   ))}
                 </div>
               </div>
-              <p className="text-sm text-card-foreground/80">{r.comment}</p>
+              {r.comment && <p className="text-sm text-card-foreground/80">{r.comment}</p>}
               <div className="mt-3 pt-3 border-t border-border/50 flex justify-end">
                 <Button variant="ghost" size="sm" className="text-xs" onClick={() => toast.info("Reply coming soon")}>
                   <MessageSquareReply size={13} /> Reply

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Calendar, Clock, IndianRupee, MapPin, Star, Users, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, IndianRupee, MapPin, Users, Check, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import DriverCard from "@/components/transport/DriverCard";
@@ -37,6 +37,11 @@ const RideDetails = () => {
 
   const book = async () => {
     if (!ride || !canBook) return;
+    if (!user) {
+      toast({ title: "Please log in to request a seat" });
+      nav("/login");
+      return;
+    }
     setSubmitting(true);
     try {
       await rideService.bookRide(ride.id, seats);
@@ -102,34 +107,6 @@ const RideDetails = () => {
                 <div className="ml-4 h-6 border-l-2 border-dashed border-border" />
                 <Point icon="drop" label="Drop" city={ride.destination} point={ride.dropPoint} />
               </div>
-            </section>
-
-            {ride.description && (
-              <section className="rounded-2xl bg-card border border-border/60 shadow-card p-6">
-                <h2 className="font-display font-bold text-foreground mb-2">About this ride</h2>
-                <p className="text-muted-foreground text-sm leading-relaxed">{ride.description}</p>
-              </section>
-            )}
-
-            <section className="rounded-2xl bg-card border border-border/60 shadow-card p-6">
-              <h2 className="font-display font-bold text-foreground mb-4">Reviews</h2>
-              {ride.reviews.length ? (
-                <div className="space-y-4">
-                  {ride.reviews.map((r, i) => (
-                    <div key={i} className="pb-4 border-b border-border/60 last:border-0 last:pb-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-foreground text-sm">{r.user}</span>
-                        <div className="flex items-center gap-0.5 text-secondary">
-                          {Array.from({ length: r.rating }).map((_, k) => <Star key={k} size={12} className="fill-secondary" />)}
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{r.comment}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No reviews yet.</p>
-              )}
             </section>
           </div>
 

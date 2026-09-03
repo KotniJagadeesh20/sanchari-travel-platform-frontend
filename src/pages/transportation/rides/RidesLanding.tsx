@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Search, Plus, Car, Users, IndianRupee } from "lucide-react";
+import { Search, Plus, Car } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -45,13 +45,6 @@ const RidesLanding = () => (
         />
       </div>
 
-      <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-        <Stat icon={<Users size={18} />} value="12K+" label="Riders" />
-        <Stat icon={<Car size={18} />} value="3.2K" label="Trips a week" />
-        <Stat icon={<IndianRupee size={18} />} value="₹380" label="Avg. saved" />
-        <Stat icon={<Users size={18} />} value="4.8★" label="Driver rating" />
-      </div>
-
       <div className="mt-8 text-center">
         <Link to="/transportation/rides/my-rides" className="text-primary text-sm font-semibold hover:underline">
           View my rides →
@@ -79,16 +72,6 @@ const ActionCard = ({
       </div>
     </Link>
   </motion.div>
-);
-
-const Stat = ({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) => (
-  <div className="glass rounded-2xl p-4 flex items-center gap-3">
-    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">{icon}</div>
-    <div>
-      <p className="text-lg font-bold text-foreground leading-tight">{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
-    </div>
-  </div>
 );
 
 export default RidesLanding;

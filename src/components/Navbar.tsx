@@ -3,6 +3,7 @@ import { Globe, Menu, X, UserCircle, LogOut } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
+import NotificationBell from "@/components/NotificationBell";
 
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -46,13 +47,14 @@ const Navbar = () => {
         {/* Desktop */}
         <div className="hidden md:flex items-center gap-8">
           <Link to="/" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Home</Link>
-          <Link to="/trips" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Destinations</Link>
+          <Link to="/all-destinations" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Destinations</Link>
           <Link to="/all-packages" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Packages</Link>
           <Link to="/troops" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Troops</Link>
           <Link to="/services" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Services</Link>
           <Link to="/planner" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Planner</Link>
           {isAuthenticated ? (
             <>
+              <NotificationBell />
               <Link to="/profile" className="text-muted-foreground hover:text-foreground transition-colors">
                 <UserCircle size={22} />
               </Link>
@@ -89,13 +91,17 @@ const Navbar = () => {
           >
             <div className="flex flex-col gap-1 p-4">
               <Link to="/" className="py-2 px-3 rounded-lg hover:bg-muted transition-colors text-sm">Home</Link>
-              <Link to="/trips" className="py-2 px-3 rounded-lg hover:bg-muted transition-colors text-sm">Destinations</Link>
+              <Link to="/all-destinations" className="py-2 px-3 rounded-lg hover:bg-muted transition-colors text-sm">Destinations</Link>
               <Link to="/all-packages" className="py-2 px-3 rounded-lg hover:bg-muted transition-colors text-sm">Packages</Link>
               <Link to="/troops" className="py-2 px-3 rounded-lg hover:bg-muted transition-colors text-sm">Troops</Link>
               <Link to="/services" className="py-2 px-3 rounded-lg hover:bg-muted transition-colors text-sm">Services</Link>
               <Link to="/planner" className="py-2 px-3 rounded-lg hover:bg-muted transition-colors text-sm">Planner</Link>
               {isAuthenticated ? (
                 <>
+                  <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted transition-colors text-sm">
+                    <span className="flex items-center gap-2"><UserCircle size={16} /> Notifications</span>
+                    <NotificationBell />
+                  </div>
                   <Link to="/profile" className="py-2 px-3 rounded-lg hover:bg-muted transition-colors text-sm flex items-center gap-2">
                     <UserCircle size={16} /> Profile
                   </Link>

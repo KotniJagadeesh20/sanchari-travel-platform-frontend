@@ -1,11 +1,13 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, Link } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { PlannerSidebar } from "./PlannerSidebar";
 import { Globe, LogOut } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function PlannerLayout() {
+  const { user } = useAuth();
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
@@ -19,12 +21,12 @@ export default function PlannerLayout() {
               <span className="text-sm font-medium text-muted-foreground hidden sm:inline">Creator Dashboard</span>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
+              <Link to="/planner/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <div className="h-8 w-8 rounded-full bg-gradient-hero flex items-center justify-center text-primary-foreground text-sm font-bold">
-                  W
+                  {(user?.name?.[0] || "?").toUpperCase()}
                 </div>
-                <span className="text-sm font-medium text-foreground hidden sm:inline">Wanderlust Travels</span>
-              </div>
+                <span className="text-sm font-medium text-foreground hidden sm:inline">{user?.name || "—"}</span>
+              </Link>
               <Link to="/">
                 <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
                   <LogOut size={16} />
